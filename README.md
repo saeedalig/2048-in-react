@@ -1,4 +1,4 @@
-## Deploying a React.js 2048 Game using a Continuous Integration/Continuous Deployment (CI/CD) pipeline with Jenkins and deploying it on a Kubernetes cluster. The goal is to automate the build, test, and deployment processes to ensure a streamlined and reliable deployment of the application.
+## Deploying a React.js 2048 Game using a CI/CD pipeline with Jenkins and deploying it on a Kubernetes cluster. The goal is to automate the build, test, and deployment processes to ensure a streamlined and reliable deployment of the application.
 
 ## Workflow of Project
 In this project I am utilizing **Git, Jenkins, SonarQube, Maven, Trivy, OWASP, Docker and Kubernetes **. 
