@@ -52,16 +52,6 @@ sudo apt-get install trivy -y
 
 ```
 
-- **Ansible**
-```
-
-sudo apt update
-sudo apt install software-properties-common
-sudo add-apt-repository --yes --update ppa:ansible/ansible
-sudo apt install ansible -y
-
-```
-
 - **Install Plugins** 
     - JDK
     - Sonarqube Scanner
@@ -117,4 +107,115 @@ kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documen
 **Only on Worker node**
 ```
 sudo kubeadm join <master-node-ip>:<master-node-port> --token <token> --discovery-token-ca-cert-hash <hash>
+```
+
+## Pipeline Script
+```
+pipeline{
+    agent any
+    tools{
+        jdk 'jdk17'
+        nodejs 'node16'
+    }
+    environment {
+        SCANNER_HOME=tool 'sonar-scanner'
+        DOCKERHUB = "asa96"
+        APP_NAME = "2048-game"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_NAME = "${DOCKERHUB}" + "/" + "${APP_NAME}"
+        REGISTRY_CREDS = "dockerhub"
+    }
+
+    stages {
+        stage('clean workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+
+        stage('Git Checkout'){
+            steps{
+                git branch: 'master', url: 'https://github.com/saeedalig/2048-in-react.git'
+            }
+        }
+
+        stage("Sonarqube Analysis "){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Game \
+                    -Dsonar.projectKey=Game '''
+                }
+            }
+        }
+
+        stage("Quality Gate"){
+           steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
+                }
+            } 
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+
+        stage('OWASP FS SCAN') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+            }
+        }
+
+        stage('Build Docker Image'){
+            steps{
+                script {
+                    docker_image = docker.build("${IMAGE_NAME}")
+                }
+            }
+        }
+        
+        stage('Push Docker Image'){
+            steps {
+                script{
+                    docker.withRegistry('', REGISTRY_CREDS ){
+                        docker_image.push("${BUILD_NUMBER}")
+                        docker_image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage("TRIVY Scan Image"){
+            steps{
+                sh "trivy image sevenajay/2048:latest > trivy.txt" 
+            }
+        }
+
+        stage('Deploy to kubernets'){
+            steps{
+                script{
+                    withKubeConfig(caCertificate: '',
+                        clusterName: '',
+                        contextName: '',
+                        credentialsId: 'k8s',
+                        namespace: '',
+                        restrictKubeConfigAccess: false,
+                        serverUrl: '') {
+                           sh 'kubectl apply -f deployment.yaml'
+                    }
+                }
+            }
+        }
+    }
+}
+
 ```
