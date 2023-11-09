@@ -7,6 +7,9 @@ The project involves deploying a React.js 2048 game using a comprehensive CI/CD 
 
 The pipeline provides a robust and automated development and deployment process for the React.js 2048 game.
 
+![Alt text](static/pic1.png)
+
+
 ## Server Setup (Installation)
 - **AWS EC2 Instance:** t2.medium 
 - **Jenkins**
@@ -219,3 +222,14 @@ pipeline{
 }
 
 ```
+
+### Verify Kubernetes Resources
+``` kubectl get all```
+
+![Alt text](static/pic2.png)
+
+### Access the Game on respective port
+
+![Alt text](static/pic3.png)
+
+**Congratulations!!!!!!!**
